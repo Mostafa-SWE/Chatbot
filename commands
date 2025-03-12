@@ -1,0 +1,56 @@
+win:
+Invoke-WebRequest -Uri "https://awscli.amazonaws.com/AWSCLIV2.msi" -OutFile "AWSCLIV2.msi"  
+Start-Process msiexec.exe -ArgumentList '/i AWSCLIV2.msi /quiet' -NoNewWindow -Wait   
+
+aws configure
+
+aws lambda create-function `
+    --function-name lambda_function `
+    --runtime python3.13 `
+    --role arn:aws:iam::605134447842:role/GHW `
+    --handler lambda_function.lambda_handler `
+    --zip-file fileb://function.zip
+
+aws lambda list-functions
+
+aws apigateway create-rest-api --name "ghwapi"
+
+aws apigateway get-resources --rest-api-id YOUR_API_ID
+
+aws apigateway create-resource \
+    --rest-api-id YOUR_API_ID \
+    --parent-id YOUR_RESOURCE_ID \
+    --path-part chatbot
+
+aws apigateway put-method \
+    --rest-api-id YOUR_API_ID \
+    --resource-id YOUR_NEW_RESOURCE_ID \
+    --http-method POST \
+    --authorization-type "NONE"
+
+aws apigateway put-integration \
+    --rest-api-id YOUR_API_ID \
+    --resource-id YOUR_NEW_RESOURCE_ID \
+    --http-method POST \
+    --type AWS_PROXY \
+    --integration-http-method POST \
+    --uri arn:aws:apigateway:YOUR_LOCATION_HERE:lambda:path/2015-03-31/functions/FUNCTION_ARN_HERE/invocations
+
+
+aws apigateway create-deployment \
+    --rest-api-id YOUR_API_ID \
+    --stage-name prod
+
+aws lambda add-permission \
+    --function-name YOUR_FUNCTION_NAME \
+    --statement-id apigateway-test-1 \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:YOUR_LOCATION:YOUR_ACCOUNT_ID:YOUR_API_ID/prod/POST/chatbot"
+
+API URL:
+echo "https://YOUR_API_ID.execute-api.YOUR_LOCATION.amazonaws.com/prod/chatbot"
+
+curl -X POST "https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod/chatbot" \
+    -H "Content-Type: application/json" \
+    -d '{}'
